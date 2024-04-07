@@ -11,6 +11,7 @@ from math import sqrt
 from sklearn.model_selection import train_test_split
 from sklearn import  metrics
 import statsmodels.api as sm
+import plotly.express as px
 
 def evaluating_models(test,predictions):
     MAE=metrics.mean_absolute_error(test,predictions) #Mean Absolute Error
@@ -863,7 +864,9 @@ for country in countries:
             plt.savefig(f"forecast/energy/forecast_en_{country}.png") 
         
         plt.clf()
+        
 
+    
             
             
             
