@@ -5,16 +5,15 @@ from dash.dependencies import Input, Output
 import pandas as pd # data science library o manipulate data
 import numpy as np # mathematical library to manipulate arrays and matrices
 import matplotlib.pyplot as plt # visualization ~
-import urllib.request
-import os
-import re
-from statsmodels.tsa.ar_model import AutoReg
 #from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 from sklearn.model_selection import train_test_split
 from sklearn import  metrics
 import statsmodels.api as sm
+import plotly.express as px
+
+import MetricForecast
 
 #Define CSS style
 external_stylesheets = ["https://www.w3schools.com/w3css/4/w3.css"]
@@ -39,11 +38,10 @@ external_stylesheets = ["https://www.w3schools.com/w3css/4/w3.css"]
 
 forecast_dropdown = [
     "CO2 Emissions", 
-    "Linear Regression", 
-    "Gradient Boosting"
+    "Renewable Energy", 
     ]
 
-countries=["Portugal","Spain","France","Germany","Belgium","Italy"]
+countries = MetricForecast.countries
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
@@ -69,7 +67,7 @@ app.layout = html.Div(
             html.Div([
                 dcc.Dropdown(
                     id="country-dropdown",
-                    options=[{"label": graph_type, "value": graph_type} for country in countries],
+                    options=[{"label": country, "value": country} for country in countries],
                     value=countries[0],
                     clearable=False
                 ),
@@ -121,12 +119,9 @@ def generate_table(dataframe, max_rows=20):
              [Input("forecast-dropdown", "value"), Input("country-dropdown", "value")])
 
 def update_forecast_graph(selected_metric, selected_country):
-    if selected_tab == "Bagging Regression":
-        fig = fig_forecast_BR
-    elif selected_tab == "Linear Regression":
-        fig = fig_forecast_LR
-    elif selected_tab == "Gradient Boosting":
-        fig = fig_forecast_GB
+    df_plot = MetricForecast.Forecast(selected_country, selected_metric)
+    fig = px.line(df_plot, y="y_pred")
+    fig.update_yaxes(title_text=selected_metric)
     return fig
 
 # Run the app
