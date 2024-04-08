@@ -11,7 +11,6 @@ from math import sqrt
 from sklearn.model_selection import train_test_split
 from sklearn import  metrics
 import statsmodels.api as sm
-import plotly.express as px
 
 def evaluating_models(test,predictions):
     MAE=metrics.mean_absolute_error(test,predictions) #Mean Absolute Error
@@ -69,6 +68,10 @@ energy = r'forecast/energy'
 if not os.path.exists(energy):
     os.makedirs(energy)
     
+csv_files = r'csv_files' 
+if not os.path.exists(csv_files):
+    os.makedirs(csv_files)
+    
 ##############################################################################################################################################################
 
 blue=["deepskyblue","skyblue","steelblue","dodgerblue","royalblue","blue"]
@@ -86,7 +89,7 @@ energy_prod=energy_prod.dropna()
 
 date_range = pd.date_range(start='2021-01-01', end='2023-01-01', freq='D') #O intervalo de datas com as quais vamos trabalhar
 
-countries=["Portugal","Spain","France","Germany","Belgium","Italy"] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
+countries=["Portugal","Spain","France","Germany","Belgium","Italy","Netherlands","Austria","Poland","Czechia" , "Luxembourg"] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
 
 weather_cond=['Temperature [ºC]','Wind Speed [km/h]','Relative Humidity (%)','Pressure [mbar]','Solar Radiation [W/m^2]','Rain [mm/h]'] #Weather conditions que escolhemos
 
@@ -110,9 +113,12 @@ for country in countries:
     meteo.rename(columns={'temp': 'Temperature [ºC]', 'windspeed': 'Wind Speed [km/h]',"humidity": 'Relative Humidity (%)',
                                 'sealevelpressure': 'Pressure [mbar]','solarradiation': 'Solar Radiation [W/m^2]', 'precip': 'Rain [mm/h]'}, inplace=True)
 
-
+    country_name = country
     
-    df_country = carbon_eu[(carbon_eu['country'] == country)] 
+    if country == "Czechia":
+        country_name = "Czech Republic"
+        
+    df_country = carbon_eu[(carbon_eu['country'] == country_name)] 
     
     for sector in sectors_co2:
         sector_list = df_country[(df_country['sector'] == sector)]
@@ -132,6 +138,7 @@ for country in countries:
 
     df_country  = pd.merge(df_country , Domestic_Aviation, on=["Date","country"], how='inner')
 
+    print(df_country)
     
     df_country["Total CO2 [Tonne]"]= df_country["Power"]+df_country["International Aviation"]+df_country["Residential"]+df_country["Industry"]+df_country["Domestic Aviation"]
 
@@ -145,7 +152,7 @@ for country in countries:
 
     df_country.set_index('Date', inplace=True)
     
-    df_en = energy_prod[(energy_prod['country'] == country)] 
+    df_en = energy_prod[(energy_prod['country'] == country_name)] 
     
     for sector in sectors_en:
         sector_list = df_en[(df_en['sector'] == sector)]
@@ -217,11 +224,24 @@ for country in countries:
     
     globals()[f"{country.replace(' ', '_')}"]= df_country
     
-    globals()[f"{country.replace(' ', '_')}"]=globals()[f"{country.replace(' ', '_')}"].dropna() 
+    globals()[f"{country.replace(' ', '_')}"]=globals()[f"{country.replace(' ', '_')}"].dropna()  
     
     if "datetime" in globals()[f"{country.replace(' ', '_')}"].columns:
         globals()[f"{country.replace(' ', '_')}"] = globals()[f"{country.replace(' ', '_')}"].drop(columns=['datetime'])
-        
+    
+
+    globals()[f"{country.replace(' ', '_')}"].to_csv(f"csv_files/{country}.csv")
+    
+
+df_total_country=globals()[f"{countries[0].replace(' ', '_')}"]
+
+for country in countries[1:]:
+    df_total_country=pd.concat([df_total_country,globals()[f"{country.replace(' ', '_')}"] ])
+    df_total_country.dropna()  
+    
+df_total_country.to_csv(f"csv_files/Allcountries.csv")
+    
+
 
 #Uma coisa importante daqui é que o ficheiro final é o globals()[f"{country.replace(' ', '_')}"] isto porque a partida vamos sempre fazer um loop para os countries
 # e não nos necessitamos de preocupar em dar um nome um a um. Este é o nome do nosso dataframe final
@@ -864,9 +884,7 @@ for country in countries:
             plt.savefig(f"forecast/energy/forecast_en_{country}.png") 
         
         plt.clf()
-        
 
-    
             
             
             

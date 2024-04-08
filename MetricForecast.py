@@ -6,7 +6,7 @@ import os
 import re
 from statsmodels.tsa.ar_model import AutoReg
 #from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from math import sqrt
 from sklearn.model_selection import train_test_split
 from sklearn import  metrics
@@ -16,14 +16,22 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.base import clone
 
-def evaluating_models(test,predictions):
-    MAE=metrics.mean_absolute_error(test,predictions) #Mean Absolute Error
-    MBE=np.mean(test-predictions) #  Mean Bias Error
-    MSE=metrics.mean_squared_error(test,predictions)  
-    RMSE= np.sqrt(metrics.mean_squared_error(test,predictions))# Root Mean Squared Error  
-    cvRMSE=RMSE/np.mean(test) #cv Root Mean Squared Error  
-    NMBE=MBE/np.mean(test) #Normalized Mean Bias Error:
-    return MAE, MBE,MSE,RMSE,cvRMSE,NMBE
+def calculate_metrics(y_pred, y):
+    MAE = mean_absolute_error(y,y_pred) 
+    MSE = mean_squared_error(y,y_pred)  
+    RMSE = np.sqrt(mean_squared_error(y,y_pred))
+    MBE = np.mean(y-y_pred)
+    cvRMSE = RMSE/np.mean(y)
+    NMBE = MBE/np.mean(y)
+    
+    return pd.DataFrame({
+        "MAE": [MAE],
+        "MSE": [MSE],
+        "RMSE": [RMSE],
+        "MBE": [MBE],
+        "cvRMSE": [cvRMSE],
+        "NMBE": [NMBE]
+        })
 
 ############################################################## TRATAMENTO DOS DADOS ##########################################################################
 
@@ -37,7 +45,7 @@ energy_prod=energy_prod.dropna()
 
 date_range = pd.date_range(start='2021-01-01', end='2023-01-01', freq='D') #O intervalo de datas com as quais vamos trabalhar
 
-countries=[#"Austria",
+countries=["Austria",
            "Belgium",
            #"Czechia",
            "France",
@@ -45,7 +53,7 @@ countries=[#"Austria",
            "Italy",
            #"Luxembourg",
            #"Netherlands",
-           #"Poland",
+           "Poland",
            "Portugal", 
            "Spain"] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
 
@@ -633,7 +641,6 @@ def Forecast(country, option):
         df_output = pd.DataFrame({"y_pred": y_pred_RF_uni})
         df_output.set_index(df_test.index, inplace=True, drop=False)
         
-        #MAE_RF, MBE_RF,MSE_RF, RMSE_RF,cvRMSE_RF,NMBE_RF= evaluating_models(Y_test,y_pred_RF_uni)
+        df_metrics = calculate_metrics(y_pred_RF_uni, Y_test)
         
-        return df_output
-
+        return df_output, df_metrics
