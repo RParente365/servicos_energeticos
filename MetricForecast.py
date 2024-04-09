@@ -190,6 +190,8 @@ for country in countries:
     if "datetime" in globals()[f"{country.replace(' ', '_')}"].columns:
         globals()[f"{country.replace(' ', '_')}"] = globals()[f"{country.replace(' ', '_')}"].drop(columns=['datetime'])
         
+def get_country_variable(country):
+    return globals()[f"{country.replace(' ', '_')}"]   
 
 #Uma coisa importante daqui é que o ficheiro final é o globals()[f"{country.replace(' ', '_')}"] isto porque a partida vamos sempre fazer um loop para os countries
 # e não nos necessitamos de preocupar em dar um nome um a um. Este é o nome do nosso dataframe final
@@ -199,6 +201,18 @@ from sklearn.feature_selection import mutual_info_regression,f_regression
 
 high_feat_temp_co = {}
 high_feat_temp_en= {}
+
+kbest_co = {}
+kbest_en = {}
+
+rfor_co = {}
+rfor_en = {}
+
+points_co_dic={}
+
+points_en_dic={}
+
+
 
 for country in countries:
      
@@ -268,6 +282,8 @@ for country in countries:
     features = globals()[f"{country.replace(' ', '_')}"].columns.tolist()[8:22] + globals()[f"{country.replace(' ', '_')}"].columns.tolist()[25:28]
     
     high_feat_temp = dict(zip(features, fit.scores_))
+    
+    kbest_co[country] = high_feat_temp
 
     high_feat_temp = dict(sorted(high_feat_temp.items(), key=lambda item: item[1], reverse=True))
     
@@ -287,6 +303,8 @@ for country in countries:
     model.fit(X_co, Y_co)
 
     high_feat_temp=dict(zip(features, model.feature_importances_))
+    
+    rfor_co[country] = high_feat_temp
 
     high_feat_temp = dict(sorted(high_feat_temp.items(), key=lambda item: item[1], reverse=True))
     
@@ -311,6 +329,8 @@ for country in countries:
     # Sort features based on total points
     sorted_features = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
 
+    points_co_dic[country]=dict(zip(high_feat_temp.keys(),total_points.items()))
+    
     # Select the top features
     high_feat_temp_co[f"high_feat_temp_{country}"] = sorted_features[:9]
     
@@ -332,6 +352,8 @@ for country in countries:
     
     high_feat_temp=dict(zip(features, fit.scores_))
     
+    kbest_en[country] = high_feat_temp
+    
     high_feat_temp = dict(sorted(high_feat_temp.items(), key=lambda item: item[1], reverse=True))
 
     kbest_points = {feature: (len(high_feat_temp) - i) for i, (feature, _) in enumerate(high_feat_temp.items())}
@@ -350,6 +372,8 @@ for country in countries:
     model.fit(X_en, Y_en)
 
     high_feat_temp=dict(zip(features, model.feature_importances_))
+    
+    rfor_en[country] = high_feat_temp
 
     high_feat_temp = dict(sorted(high_feat_temp.items(), key=lambda item: item[1], reverse=True))
     
@@ -371,6 +395,8 @@ for country in countries:
     
     for feature in high_feat_temp.keys():
         total_points[feature] =  kbest_points.get(feature, 0) + rf_points.get(feature, 0) 
+        
+    points_en_dic[country]=dict(zip(high_feat_temp.keys(),total_points.items()))
 
     # Sort features based on total points
     sorted_features = sorted(total_points.items(), key=lambda x: x[1], reverse=True)
@@ -380,6 +406,9 @@ for country in countries:
     
     #print("Best features for Renewable Energy after both tests:")
     #print(high_feat_temp_en[f"high_feat_temp_{country}"])
+    
+def get_features(country):
+    return  kbest_co[country], kbest_en[country], rfor_co[country], rfor_en[country], points_co_dic[country], points_en_dic[country]
         
 scaler = StandardScaler()
 

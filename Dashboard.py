@@ -11,6 +11,7 @@ from math import sqrt
 from sklearn.model_selection import train_test_split
 import statsmodels.api as sm
 import plotly.express as px
+from datetime import date
 
 import MetricForecast
 
@@ -68,6 +69,28 @@ countries = MetricForecast.countries
 
 click_data = {'points': [{'location': 'Portugal'}]}
 
+
+def period_anal(start_date, end_date, variable):
+    period_sum = []
+    for country in countries:
+        # Filter the DataFrame based on the conditions: date range and country
+        df_filter = df_total_country[(df_total_country['Date'] >= start_date) & 
+                                     (df_total_country['Date'] <= end_date) & 
+                                     (df_total_country['country'] == country)]
+        # Sum the values for the selected variable in the filtered DataFrame
+        period_sum.append(df_filter[variable].sum())
+    return period_sum
+        
+
+def data_analysis_sing(country):
+    df = MetricForecast.get_country_variable(country)
+    return df
+
+def get_features(country):
+    kbest_co, kbest_en, rfor_co, rfor_en, points_co_dic, points_en_dic= MetricForecast.get_features(country)
+    
+    return kbest_co, kbest_en, rfor_co, rfor_en, points_co_dic, points_en_dic
+
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_callback_exceptions=True)
 server = app.server
 
@@ -113,6 +136,7 @@ app.layout = html.Div(
                         )
                     ],
                 ),
+                
                 html.Div(
                     className="w3-bar-block",
                     children=[
@@ -129,7 +153,12 @@ app.layout = html.Div(
                         html.A(
                             href="#data_analysis",
                             className="w3-bar-item w3-button w3-hover-white",
-                            children=["Data Analysis"],
+                            children=["Global Data Analysis"],
+                        ),
+                        html.A(
+                            href="#data_analysis_country",
+                            className="w3-bar-item w3-button w3-hover-white",
+                            children=["Country Data Analysis"],
                         ),
                         html.A(
                             href="#features",
@@ -222,8 +251,8 @@ app.layout = html.Div(
                             },
                             className="w3-round",
                         ),
-                        ],
-                    ),
+                    ],
+                ),
         html.Div([
             dcc.Tabs(id="map-tabs",
                  children=[dcc.Tab(label=tab, value=tab) for tab in map_tabs],
@@ -234,6 +263,137 @@ app.layout = html.Div(
             dcc.Graph(id="energy-map", style={"display": "none"}),
             dcc.Graph(id="meteo-map", style={"display": "none"}),
             html.Div(id="map")
+        ]),
+        
+        html.Div( #starting the part of data analysis 
+                    className="w3-container",
+                    id="data_analysis",
+                    style={"margin-top": "75px"},
+                    children=[
+                        html.H1(
+                            className="w3-xlarge w3-text-blue",
+                            children=[html.B(["Global Data Analysis."])],
+                        ),
+                        html.Hr(
+                            style={
+                                "width": "50px",
+                                "border": "5px solid rgba(0, 128, 255, 0.904)",
+                            },
+                            className="w3-round",
+                        ),
+                        ],
+                    ),
+        html.Div([
+            html.Div([
+                dcc.DatePickerRange(
+                    id='my-date-picker-range',
+                    min_date_allowed=date(2021, 1, 1),
+                    max_date_allowed=date(2023, 1, 1),
+                    initial_visible_month=date(2021, 1, 1),
+                    start_date=date(2021, 1, 1),
+                    end_date=date(2023, 1, 1)
+                    ),
+                html.Div(id='output-container-date-picker-range'),
+                dcc.Dropdown(
+                    id="option-dropdown",
+                    options=[
+                        {'label': 'Total CO2 [Tonne]', 'value': 'Total CO2 [Tonne]'},
+                        {'label': 'Total Renewable [GWh]', 'value': 'Total Renewable [GWh]'},
+                        {'label': 'Total Non-Renewable [GWh]', 'value': 'Total Non-Renewable [GWh]'},
+                        {'label': 'Total Electricity [GWh]', 'value': 'Total Electricity [GWh]'}
+                        ],
+                    value='Total CO2 [Tonne]',
+                    clearable=False
+                ),
+            ],),
+            html.Br(),
+            html.Br(),
+            dcc.Graph(id="period-global-bar")
+        ]),
+        
+        
+        html.Div( #starting the part of data analysis 
+                    className="w3-container",
+                    id="data_analysis_country",
+                    style={"margin-top": "75px"},
+                    children=[
+                        html.H1(
+                            className="w3-xlarge w3-text-blue",
+                            children=[html.B(["Country Data Analysis."])],
+                        ),
+                        html.Hr(
+                            style={
+                                "width": "50px",
+                                "border": "5px solid rgba(0, 128, 255, 0.904)",
+                            },
+                            className="w3-round",
+                        ),
+                        ],
+                    ),
+        
+        html.Div([
+                html.Div([
+                    dcc.Dropdown(
+                        id="sector_dropdown",
+                        options=["CO2 Emissions", "Energy Consumption", "Climate data"],
+                        value="CO2 Emissions",
+                        clearable=False
+                    ),
+                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                html.Div([html.Div([html.P(id="clicked-location2")]),
+                dcc.Graph(id="sector_graph"),
+                dcc.Graph(id="co2_vs_energy_graph")
+            ]),
+        ]),
+        
+        html.Div( #starting the part of data analysis 
+                    className="w3-container",
+                    id="features",
+                    style={"margin-top": "75px"},
+                    children=[
+                        html.H1(
+                            className="w3-xlarge w3-text-blue",
+                            children=[html.B(["Features."])],
+                        ),
+                        html.Hr(
+                            style={
+                                "width": "50px",
+                                "border": "5px solid rgba(0, 128, 255, 0.904)",
+                            },
+                            className="w3-round",
+                        ),
+                        ],
+                    ),
+        html.P(
+                    children=[
+                        """
+                        The variables for each country are evaluated using kBest and Random Forest Regressor tests, and scored according to their importance in a global view of both tests to perform the forecast.
+                        """
+                        ]
+                        ),
+
+        html.Div([
+                html.Div([
+                    dcc.Dropdown(
+                        id="fore_dropdown",
+                        options=["CO2 Emission", "Renewable Energy"],
+                        value="CO2 Emission",
+                        clearable=False
+                    ),
+                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                html.Div([
+                    dcc.Dropdown(
+                        id="feature_dropdown",
+                        options=["kBest", "Random Forest Regressor"],
+                        value="kBest",
+                        clearable=False
+                    ),
+                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                html.Div([html.Div([html.P(id="clicked-location3")]),
+                dcc.Graph(id="features_bar"),
+                dcc.Graph(id="score_bar"),
+                html.Label("Note that this 'Final Score' is given based on each feature's performance on both tests. Those with higher scores on this graph are the chosen features to use in the forecast."),
+            ]),
         ]),
         
         
@@ -333,7 +493,8 @@ def render_content(selected_tab):
             dcc.Dropdown(
                 id="co2-map-dropdown",
                 options= [{"label": observable, "value": observable} for observable in CO2_map_dropdown],
-                value=CO2_map_dropdown[0]
+                value=CO2_map_dropdown[0],
+                clearable=False
                 ),
             dcc.Graph(id="energy-map", style={"display": "none"}),
             dcc.Graph(id="meteo-map", style={"display": "none"})
@@ -345,7 +506,8 @@ def render_content(selected_tab):
             dcc.Dropdown(
                 id="energy-map-dropdown",
                 options= [{"label": observable, "value": observable} for observable in Energy_map_dropdown],
-                value=Energy_map_dropdown[0]
+                value=Energy_map_dropdown[0],
+                clearable=False
             ),
             dcc.Graph(id="co2-map", style={"display": "none"}),
             dcc.Graph(id="meteo-map", style={"display": "none"})
@@ -357,7 +519,8 @@ def render_content(selected_tab):
             dcc.Dropdown(
                 id="meteo-map-dropdown",
                 options= [{"label": observable, "value": observable} for observable in Meteo_map_dropdown],
-                value=Meteo_map_dropdown[0]
+                value=Meteo_map_dropdown[0],
+                clearable=False
             ),
             dcc.Graph(id="co2-map", style={"display": "none"}),
             dcc.Graph(id="energy-map", style={"display": "none"})
@@ -442,7 +605,172 @@ def update_clicked_location(click_data_co2, click_data_energy, click_data_meteo)
         return f"You have selected {click_data['points'][0]['location']} to perform the forecast."
     else:
         return "No country selected for forecast."
+
+
+@app.callback(Output("period-global-bar", "figure"),
+    Input('my-date-picker-range', 'start_date'),
+    Input('my-date-picker-range', 'end_date'),
+    Input("option-dropdown", "value"))
+
+def graph_bar_global(start_date,end_date, variable):
+    sum_period=period_anal(start_date,end_date,variable)
+    fig=px.bar(x=countries, y=sum_period)
+    fig.update_layout(title=f'{variable} for all countries in Europe',
+                    xaxis_title='Countries',
+                    yaxis_title=f'{variable}')
+    return fig
+
+@app.callback(Output('clicked-location2', 'children'),
+        Output("co2_vs_energy_graph", "figure"),
+        Output("sector_graph", "figure"),
+        Input("co2-map", "clickData"),
+        Input("energy-map", "clickData"),
+        Input("meteo-map", "clickData"),
+        Input("sector_dropdown", "value"))
+
+def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
+    
+    global click_data
+    
+    if click_data_co2:
+        click_data = click_data_co2
+    elif click_data_energy:
+        click_data = click_data_energy
+    elif click_data_meteo:
+        click_data = click_data_meteo
+    else:
+        click_data = None
+        return f"No country selected", {}, {}
+    
+    selected_country = click_data['points'][0]['location']
+    
+    df=data_analysis_sing(selected_country)
+    
+    df2=df[['Total Renewable [GWh]',
+                        'Total Non-Renewable [GWh]',
+                        'Total Electricity [GWh]','Total CO2 [Tonne]']]
+    
+    if sector == "CO2 Emissions" :
+        df= df[['Total CO2 [Tonne]',
+                        'Ground Transport',
+                        'International Aviation',
+                        'Residential',
+                        'Industry',
+                        'Domestic Aviation']]
         
+    elif sector=="Energy Consumption":
+        df=df[['Other sources',
+                        'Gas',
+                        'Oil',
+                        'Coal',
+                        'Wind',
+                        'Nuclear',
+                        'Solar',
+                        'Hydroelectricity',
+                        'Total Renewable [GWh]',
+                        'Total Non-Renewable [GWh]',
+                        'Total Electricity [GWh]']]
+        
+    elif sector=="Climate data":
+        
+        df=df[['Temperature [ºC]',
+                            'Relative Humidity (%)',
+                            'Rain [mm/h]',
+                            'Wind Speed [km/h]',
+                            'Pressure [mbar]',
+                            'Solar Radiation [W/m^2]']]
+    
+    print(df)
+    fig1=px.line(df2)
+    fig2=px.line(df)
+    
+    fig1.update_layout(title=f'Energy Consumption and CO2 emission for {selected_country}',
+                    xaxis_title='Date',
+                    yaxis_title='Values (See variables)')
+    
+    fig2.update_layout(title=f'{sector} segregation for {selected_country}',
+                    xaxis_title='Date',
+                    yaxis_title='Values (See variables)')
+    
+    return f"You are making the data analysis to {selected_country}." , fig1, fig2
+
+@app.callback(Output('clicked-location3', 'children'),
+        Output("features_bar", "figure"),
+        Output("score_bar", "figure"),
+        Input("co2-map", "clickData"),
+        Input("energy-map", "clickData"),
+        Input("meteo-map", "clickData"),
+        Input("feature_dropdown", "value"),
+        Input("fore_dropdown", "value"))
+
+def feature_analysis(click_data_co2,click_data_energy,click_data_meteo, method, fore):
+    
+    global click_data
+    
+    if click_data_co2:
+        click_data = click_data_co2
+    elif click_data_energy:
+        click_data = click_data_energy
+    elif click_data_meteo:
+        click_data = click_data_meteo
+    else:
+        click_data = None
+        return f"No country selected", {}, {}
+    
+    selected_country = click_data['points'][0]['location']
+    
+    features_data = get_features(selected_country)
+
+    if features_data is None:
+        return f"No features data available for {selected_country}.", {}, {}
+
+    [kbest_co, kbest_en, rfor_co, rfor_en, points_co_dic, points_en_dic] = features_data
+
+    if fore == "CO2 Emission":
+        dic2 = points_co_dic #_co
+        
+        if method == "kBest":
+            dic1 = kbest_co
+    
+        elif method == "Random Forest Regressor":
+            dic1 = rfor_co
+        
+    elif fore == "Renewable Energy":
+        dic2 = points_en_dic #_en
+        
+        if method == "kBest":
+            dic1 = kbest_en
+    
+        elif method == "Random Forest Regressor":
+            dic1 = rfor_en
+    
+    #For dic1
+    feature_names = list(dic1.keys())
+    scores = [entry for entry in dic1.values()]
+
+    #For dic2
+    feature_names2 = list(dic2.keys())
+    scores2 = [entry[1] for entry in dic2.values()]
+
+    # Create the bar plots    
+    fig1=px.bar(x=feature_names, y=scores)
+
+    fig2=px.bar(x=feature_names2, y=scores2)
+    
+    
+    fig1.update_layout(title=f'Features Score for {fore} using {method}',
+                    xaxis_title='',
+                    yaxis_title='Score')
+    
+    fig2.update_layout(title=f'Final Features Score for {fore}',
+                    xaxis_title='',
+                    yaxis_title='Score')
+    
+    
+    
+    return f"You are analysing Features for {selected_country}." , fig1, fig2
+
+
 @app.callback([Output("forecast-graph", "figure"), Output("metrics-table", "children")],
               [Input("forecast-dropdown", "value"),
                Input("co2-map", "clickData"),
