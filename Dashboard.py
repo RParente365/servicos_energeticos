@@ -17,23 +17,7 @@ import MetricForecast
 #Define CSS style
 external_stylesheets = ["https://www.w3schools.com/w3css/4/w3.css"]
 
-#########################################################################################
-
 df_total_country = pd.read_csv('csv_files/Allcountries.csv')
-
-
-
-
-
-
-
-
-
-
-
-
-
-##########################################################################################
 
 map_tabs = [
     "CO2 Emissions",
@@ -316,7 +300,8 @@ def generate_table(dataframe, max_rows=20):
 
     cell_style = {
         'border': '1px solid black',
-        'padding': '8px'
+        'padding': '8px',
+        'textAlign': 'center'
     }
 
     # Modify the function to format numeric values to 5 decimal places
@@ -444,27 +429,19 @@ def display_choropleth_meteo(variable):
 
 def update_clicked_location(click_data_co2, click_data_energy, click_data_meteo):
     global click_data
-    ctx = dash.callback_context
-    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    if triggered_id == "co2-map":
-        if click_data_co2:
-            click_data = click_data_co2
-            return f"You have selected {click_data_co2['points'][0]['location']} to perform the forecast."
-        else:
-            return "No country selected for forecast."
-    elif triggered_id == "energy-map":
-        if click_data_energy:
-            click_data = click_data_energy
-            return f"You have selected {click_data_energy['points'][0]['location']} to perform the forecast."
-        else:
-            return "No country selected for forecast."
-    elif triggered_id == "meteo-map":
-        if click_data_meteo:
-            click_data = click_data_meteo
-            return f"You have selected {click_data_meteo['points'][0]['location']} to perform the forecast."
-        else:
-            return "No country selected for forecast."
+    if click_data_co2:
+        click_data = click_data_co2
+        return f"You have selected {click_data_co2['points'][0]['location']} to perform the forecast."
+    elif click_data_energy:
+        click_data = click_data_energy
+        return f"You have selected {click_data_energy['points'][0]['location']} to perform the forecast."
+    elif click_data_meteo:
+        click_data = click_data_meteo
+        return f"You have selected {click_data_meteo['points'][0]['location']} to perform the forecast."
+    elif click_data:
+        return f"You have selected {click_data['points'][0]['location']} to perform the forecast."
+    else:
+        return "No country selected for forecast."
         
 @app.callback([Output("forecast-graph", "figure"), Output("metrics-table", "children")],
               [Input("forecast-dropdown", "value"),
@@ -475,34 +452,29 @@ def update_clicked_location(click_data_co2, click_data_energy, click_data_meteo)
     
 def update_forecast(selected_observable, click_data_co2, click_data_energy, click_data_meteo, selected_metrics):
     global click_data
-    triggered_id = dash.callback_context.triggered[0]['prop_id'].split('.')[0]
-
-    if triggered_id == "co2-map":
+    if click_data_co2:
         click_data = click_data_co2
-    elif triggered_id == "energy-map":
+    elif click_data_energy:
         click_data = click_data_energy
-    elif triggered_id == "meteo-map":
+    elif click_data_meteo:
         click_data = click_data_meteo
     else:
         click_data = None
-
-    if click_data:
-        selected_country = click_data['points'][0]['location']
-        df_plot, df_metrics = MetricForecast.Forecast(selected_country, selected_observable)
-        df_plot.rename(columns={"y_pred": "Forecast"}, inplace=True)
-        df_test = MetricForecast.df_test_dict[selected_country]
-        if selected_observable == "CO2 Emissions":
-            df_plot["Real Data"] = df_test["Total CO2 [Tonne]"]
-        elif selected_observable == "Renewable Energy":
-            df_plot["Real Data"] = df_test["Total Renewable [GWh]"]
-        
-        fig = px.line(df_plot, y=df_plot.columns[[0,1]])
-        fig.update_yaxes(title_text=selected_observable)
-        table = generate_table(df_metrics.loc[:,selected_metrics])
-        return fig, table
-    else:
-        # If no country is selected, return blank figure and table
         return {}, html.Div()
+        
+    selected_country = click_data['points'][0]['location']
+    df_plot, df_metrics = MetricForecast.Forecast(selected_country, selected_observable)
+    df_plot.rename(columns={"y_pred": "Forecast"}, inplace=True)
+    df_test = MetricForecast.df_test_dict[selected_country]
+    if selected_observable == "CO2 Emissions":
+        df_plot["Real Data"] = df_test["Total CO2 [Tonne]"]
+    elif selected_observable == "Renewable Energy":
+        df_plot["Real Data"] = df_test["Total Renewable [GWh]"]
+    
+    fig = px.line(df_plot, y=df_plot.columns[[0,1]])
+    fig.update_yaxes(title_text=selected_observable)
+    table = generate_table(df_metrics.loc[:,selected_metrics])
+    return fig, table
 
 
 # Run the app
