@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt # visualization ~
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 from sklearn.model_selection import train_test_split
-from sklearn import  metrics
 import statsmodels.api as sm
 import plotly.express as px
 
@@ -36,6 +35,44 @@ df_total_country = pd.read_csv('csv_files/Allcountries.csv')
 
 ##########################################################################################
 
+map_tabs = [
+    "CO2 Emissions",
+    "Energy",
+    "Meteorology"
+    ]
+
+CO2_map_dropdown = [
+    "Total CO2 [Tonne]",
+    "Ground Transport",
+    "International Aviation",
+    "Residential",
+    "Industry",
+    "Domestic Aviation"
+    ]
+
+Energy_map_dropdown = [
+    "Nuclear",
+    "Gas",
+    "Oil",
+    "Coal",
+    "Wind",
+    "Solar",
+    "Hydroelectricity",
+    "Other sources",
+    "Total Renewable [GWh]",
+    "Total Non-Renewable [GWh]",
+    "Total Electricity [GWh]"
+    ]
+
+Meteo_map_dropdown= [
+    "Temperature [ºC]",
+    "Relative Humidity (%)",
+    "Rain [mm/h]",
+    "Wind Speed [km/h]",
+    "Pressure [mbar]",
+    "Solar Radiation [W/m^2]"
+    ]
+
 forecast_dropdown = [
     "CO2 Emissions", 
     "Renewable Energy", 
@@ -45,7 +82,9 @@ metrics = ["MAE", "MBE", "MSE", "RMSE", "NMBE", "cvRMSE"]
 
 countries = MetricForecast.countries
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+click_data = {'points': [{'location': 'Portugal'}]}
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_callback_exceptions=True)
 server = app.server
 
 # Define the layout of the app
@@ -202,55 +241,15 @@ app.layout = html.Div(
                         ],
                     ),
         html.Div([
-            dcc.Graph(id="map1",clickData={'points': [{'location': 'Portugal'}]}),
-            html.Label("CO2 emissions sectors:"),
-            dcc.Dropdown(
-                id="mydropdown1",
-                options= [
-                        'Total CO2 [Tonne]',
-                        'Ground Transport',
-                        'International Aviation',
-                        'Residential',
-                        'Industry',
-                        'Domestic Aviation'
-                    ],
-                value="Total CO2 [Tonne]"
+            dcc.Tabs(id="map-tabs",
+                 children=[dcc.Tab(label=tab, value=tab) for tab in map_tabs],
+                 value=map_tabs[0], 
             ),
-
-            dcc.Graph(id="map2"),
-            html.Label("Energy sectors:"),
-            dcc.Dropdown(
-                id="mydropdown2",
-                options= [
-                        'Other sources',
-                        'Gas',
-                        'Oil',
-                        'Coal',
-                        'Wind',
-                        'Nuclear',
-                        'Solar',
-                        'Hydroelectricity',
-                        'Total Renewable [GWh]',
-                        'Total Non-Renewable [GWh]',
-                        'Total Electricity [GWh]'
-                    ],
-                value="Total Electricity [GWh]"
-            ),
-
-            dcc.Graph(id="map3"),
-            html.Label("Climate options"),
-            dcc.Dropdown(
-                id="mydropdown3",
-                options= [
-                            'Temperature [ºC]',
-                            'Relative Humidity (%)',
-                            'Rain [mm/h]',
-                            'Wind Speed [km/h]',
-                            'Pressure [mbar]',
-                            'Solar Radiation [W/m^2]'
-                        ],
-                value="Temperature [ºC]"
-            ),
+            #Dummy Graphs to avoid callback errors when the dashboard is launched
+            dcc.Graph(id="co2-map", style={"display": "none"}),
+            dcc.Graph(id="energy-map", style={"display": "none"}),
+            dcc.Graph(id="meteo-map", style={"display": "none"}),
+            html.Div(id="map")
         ]),
         
         
@@ -306,7 +305,7 @@ def generate_table(dataframe, max_rows=20):
         'border': '1px solid black',
         'fontFamily': 'Arial, sans-serif',
         'fontSize': '14px',
-        'maxWidth': '500px'
+        'maxWidth': '600px'
     }
 
     header_style = {
@@ -338,93 +337,172 @@ def generate_table(dataframe, max_rows=20):
         style=table_style
     )
 
+@app.callback(Output("map", "children"),
+              Input("map-tabs", "value"))
+
+def render_content(selected_tab):
+    if selected_tab == "CO2 Emissions":
+        return html.Div([
+            dcc.Graph(id="co2-map", clickData=click_data),
+            html.Label("CO2 emissions sectors:"),
+            dcc.Dropdown(
+                id="co2-map-dropdown",
+                options= [{"label": observable, "value": observable} for observable in CO2_map_dropdown],
+                value=CO2_map_dropdown[0]
+                ),
+            dcc.Graph(id="energy-map", style={"display": "none"}),
+            dcc.Graph(id="meteo-map", style={"display": "none"})
+        ])
+    elif selected_tab == "Energy":
+        return html.Div([
+            dcc.Graph(id="energy-map", clickData=click_data),
+            html.Label("Energy sectors:"),
+            dcc.Dropdown(
+                id="energy-map-dropdown",
+                options= [{"label": observable, "value": observable} for observable in Energy_map_dropdown],
+                value=Energy_map_dropdown[0]
+            ),
+            dcc.Graph(id="co2-map", style={"display": "none"}),
+            dcc.Graph(id="meteo-map", style={"display": "none"})
+        ])
+    elif selected_tab == "Meteorology":
+        return html.Div([
+            dcc.Graph(id="meteo-map", clickData=click_data),
+            html.Label("Climate options:"),
+            dcc.Dropdown(
+                id="meteo-map-dropdown",
+                options= [{"label": observable, "value": observable} for observable in Meteo_map_dropdown],
+                value=Meteo_map_dropdown[0]
+            ),
+            dcc.Graph(id="co2-map", style={"display": "none"}),
+            dcc.Graph(id="energy-map", style={"display": "none"})
+        ])
+
     
 @app.callback(
-    Output('map1', 'figure'),
-    Input('mydropdown1', 'value')
+    Output('co2-map', 'figure'),
+    Input('co2-map-dropdown', 'value')
 )
 
-def display_choropleth1(variable1):
-    fig1 = px.choropleth(df_total_country,
+def display_choropleth_co2(variable):
+    fig = px.choropleth(df_total_country,
                         geojson="https://raw.githubusercontent.com/leakyMirror/map-of-europe/master/GeoJSON/europe.geojson",
                         featureidkey='properties.NAME',
                         locations="country",
                         animation_frame='Date',  # column in dataframe
-                        color=variable1,  # dataframe
+                        color=variable,  # dataframe
                         color_continuous_scale='OrRd',
-                        title=f"{variable1} in Europe",
+                        title=f"{variable} in Europe",
                         height=700
                         )
-    fig1.update_geos(fitbounds="locations", visible=False)
-    return fig1
+    fig.update_geos(fitbounds="locations", visible=False)
+    return fig
 
 @app.callback(
-    Output('map2', 'figure'),
-    Input('mydropdown2', 'value')
+    Output('energy-map', 'figure'),
+    Input('energy-map-dropdown', 'value')
 )
 
-def display_choropleth2(variable2):
-    fig2 = px.choropleth(df_total_country,
+def display_choropleth_energy(variable):
+    fig = px.choropleth(df_total_country,
                         geojson="https://raw.githubusercontent.com/leakyMirror/map-of-europe/master/GeoJSON/europe.geojson",
                         featureidkey='properties.NAME',
                         locations="country",
                         animation_frame='Date',  # column in dataframe
-                        color=variable2,  # dataframe
+                        color=variable,  # dataframe
                         color_continuous_scale='Mint',
-                        title=f"{variable2} in Europe",
+                        title=f"{variable} in Europe",
                         height=700
                         )
-    fig2.update_geos(fitbounds="locations", visible=False)
-    return fig2
+    fig.update_geos(fitbounds="locations", visible=False)
+    return fig
 
 @app.callback(
-    Output('map3', 'figure'),
-    Input('mydropdown3', 'value')
+    Output('meteo-map', 'figure'),
+    Input('meteo-map-dropdown', 'value')
 )
 
 
-def display_choropleth3(variable3):
-    fig3 = px.choropleth(df_total_country,
+def display_choropleth_meteo(variable):
+    fig = px.choropleth(df_total_country,
                         geojson="https://raw.githubusercontent.com/leakyMirror/map-of-europe/master/GeoJSON/europe.geojson",
                         featureidkey='properties.NAME',
                         locations="country",
                         animation_frame='Date',  # column in dataframe
-                        color=variable3,  # dataframe
+                        color=variable,  # dataframe
                         color_continuous_scale='Magenta',
-                        title=f"{variable3} in Europe",
+                        title=f"{variable} in Europe",
                         height=700
                         )
-    fig3.update_geos(fitbounds="locations", visible=False)
-    return fig3
+    fig.update_geos(fitbounds="locations", visible=False)
+    return fig
 
-@app.callback(
-    Output('clicked-location', 'children'),
-    [Input('map1', 'clickData')]
-)
+@app.callback(Output('clicked-location', 'children'),
+              [Input("co2-map", "clickData"), 
+               Input("energy-map", "clickData"), 
+               Input("meteo-map", "clickData")])
 
-def update_clicked_location(click_data1):
-    print("Map 1:", click_data1)
-    return f"You have selected {click_data1['points'][0]['location']} to perform the forecast."
+def update_clicked_location(click_data_co2, click_data_energy, click_data_meteo):
+    global click_data
+    ctx = dash.callback_context
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-
-
-@app.callback([Output("forecast-graph", "figure"), Output("metrics-table", "children")],
-             [Input("forecast-dropdown", "value"), Input('map1', 'clickData'), Input("metrics-checklist", "value")])
-
-def update_forecast(selected_observable, selected_country, selected_metrics):
-    df_plot, df_metrics = MetricForecast.Forecast(selected_country['points'][0]['location'], selected_observable)
-    df_plot.rename(columns={"y_pred": "Forecast"}, inplace=True)
-    df_test = MetricForecast.df_test_dict[selected_country['points'][0]['location']]
-    if selected_observable == "CO2 Emissions":
-        df_plot["Real Data"] = df_test["Total CO2 [Tonne]"]
-    elif selected_observable == "Renewable Energy":
-        df_plot["Real Data"] = df_test["Total Renewable [GWh]"]
+    if triggered_id == "co2-map":
+        if click_data_co2:
+            click_data = click_data_co2
+            return f"You have selected {click_data_co2['points'][0]['location']} to perform the forecast."
+        else:
+            return "No country selected for forecast."
+    elif triggered_id == "energy-map":
+        if click_data_energy:
+            click_data = click_data_energy
+            return f"You have selected {click_data_energy['points'][0]['location']} to perform the forecast."
+        else:
+            return "No country selected for forecast."
+    elif triggered_id == "meteo-map":
+        if click_data_meteo:
+            click_data = click_data_meteo
+            return f"You have selected {click_data_meteo['points'][0]['location']} to perform the forecast."
+        else:
+            return "No country selected for forecast."
         
-    fig = px.line(df_plot, y=df_plot.columns[[0,1]])
-    fig.update_yaxes(title_text=selected_observable)
-    table = generate_table(df_metrics.loc[:,selected_metrics])
+@app.callback([Output("forecast-graph", "figure"), Output("metrics-table", "children")],
+              [Input("forecast-dropdown", "value"),
+               Input("co2-map", "clickData"),
+               Input("energy-map", "clickData"),
+               Input("meteo-map", "clickData"),
+               Input("metrics-checklist", "value")])
     
-    return fig, table
+def update_forecast(selected_observable, click_data_co2, click_data_energy, click_data_meteo, selected_metrics):
+    global click_data
+    triggered_id = dash.callback_context.triggered[0]['prop_id'].split('.')[0]
+
+    if triggered_id == "co2-map":
+        click_data = click_data_co2
+    elif triggered_id == "energy-map":
+        click_data = click_data_energy
+    elif triggered_id == "meteo-map":
+        click_data = click_data_meteo
+    else:
+        click_data = None
+
+    if click_data:
+        selected_country = click_data['points'][0]['location']
+        df_plot, df_metrics = MetricForecast.Forecast(selected_country, selected_observable)
+        df_plot.rename(columns={"y_pred": "Forecast"}, inplace=True)
+        df_test = MetricForecast.df_test_dict[selected_country]
+        if selected_observable == "CO2 Emissions":
+            df_plot["Real Data"] = df_test["Total CO2 [Tonne]"]
+        elif selected_observable == "Renewable Energy":
+            df_plot["Real Data"] = df_test["Total Renewable [GWh]"]
+        
+        fig = px.line(df_plot, y=df_plot.columns[[0,1]])
+        fig.update_yaxes(title_text=selected_observable)
+        table = generate_table(df_metrics.loc[:,selected_metrics])
+        return fig, table
+    else:
+        # If no country is selected, return blank figure and table
+        return {}, html.Div()
 
 
 # Run the app
