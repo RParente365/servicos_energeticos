@@ -12,6 +12,11 @@ from sklearn.model_selection import train_test_split
 import statsmodels.api as sm
 import plotly.express as px
 from datetime import date
+import traceback
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import os
 
 import MetricForecast
 
@@ -67,6 +72,7 @@ metrics = ["MAE", "MBE", "MSE", "RMSE", "NMBE", "cvRMSE"]
 
 countries = MetricForecast.countries
 
+
 click_data = {'points': [{'location': 'Portugal'}]}
 
 
@@ -81,7 +87,6 @@ def period_anal(start_date, end_date, variable):
         period_sum.append(df_filter[variable].sum())
     return period_sum
         
-
 def data_analysis_sing(country):
     df = MetricForecast.get_country_variable(country)
     return df
@@ -95,6 +100,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_ca
 server = app.server
 
 # Define the layout of the app
+
 
 app.layout = html.Div(
     children=[
@@ -148,7 +154,7 @@ app.layout = html.Div(
                         html.A(
                             href="#maps",
                             className="w3-bar-item w3-button w3-hover-white",
-                            children=["European Maps"],
+                            children=["Interative Maps"],
                         ),
                         html.A(
                             href="#data_analysis",
@@ -242,7 +248,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["European Maps."])],
+                            children=[html.B(["Interative Maps."])],
                         ),
                         html.Hr(
                             style={
@@ -251,8 +257,8 @@ app.layout = html.Div(
                             },
                             className="w3-round",
                         ),
-                    ],
-                ),
+                        ],
+                    ),
         html.Div([
             dcc.Tabs(id="map-tabs",
                  children=[dcc.Tab(label=tab, value=tab) for tab in map_tabs],
@@ -284,32 +290,32 @@ app.layout = html.Div(
                         ],
                     ),
         html.Div([
-            html.Div([
-                dcc.DatePickerRange(
-                    id='my-date-picker-range',
-                    min_date_allowed=date(2021, 1, 1),
-                    max_date_allowed=date(2023, 1, 1),
-                    initial_visible_month=date(2021, 1, 1),
-                    start_date=date(2021, 1, 1),
-                    end_date=date(2023, 1, 1)
-                    ),
-                html.Div(id='output-container-date-picker-range'),
-                dcc.Dropdown(
-                    id="option-dropdown",
-                    options=[
-                        {'label': 'Total CO2 [Tonne]', 'value': 'Total CO2 [Tonne]'},
-                        {'label': 'Total Renewable [GWh]', 'value': 'Total Renewable [GWh]'},
-                        {'label': 'Total Non-Renewable [GWh]', 'value': 'Total Non-Renewable [GWh]'},
-                        {'label': 'Total Electricity [GWh]', 'value': 'Total Electricity [GWh]'}
-                        ],
-                    value='Total CO2 [Tonne]',
-                    clearable=False
-                ),
-            ],),
-            html.Br(),
-            html.Br(),
-            dcc.Graph(id="period-global-bar")
-        ]),
+    html.Div([
+        dcc.DatePickerRange(
+            id='my-date-picker-range',
+            min_date_allowed=date(2021, 1, 1),
+            max_date_allowed=date(2023, 1, 1),
+            initial_visible_month=date(2021, 1, 1),
+            start_date=date(2021, 1, 1),
+            end_date=date(2023, 1, 1)
+        ),
+        html.Div(id='output-container-date-picker-range'),
+        dcc.Dropdown(
+            id="option-dropdown",
+            options=[
+                {'label': 'Total CO2 [Tonne]', 'value': 'Total CO2 [Tonne]'},
+                {'label': 'Total Renewable [GWh]', 'value': 'Total Renewable [GWh]'},
+                {'label': 'Total Non-Renewable [GWh]', 'value': 'Total Non-Renewable [GWh]'},
+                {'label': 'Total Electricity [GWh]', 'value': 'Total Electricity [GWh]'}
+            ],
+            value='Total CO2 [Tonne]',
+            clearable=False
+        ),
+    ],),
+    html.Br(),
+    html.Br(),
+    dcc.Graph(id="period-global-bar")
+]),
         
         
         html.Div( #starting the part of data analysis 
@@ -342,7 +348,6 @@ app.layout = html.Div(
                 ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
                 html.Div([html.Div([html.P(id="clicked-location2")]),
                 dcc.Graph(id="sector_graph"),
-                dcc.Graph(id="co2_vs_energy_graph")
             ]),
         ]),
         
@@ -438,6 +443,64 @@ app.layout = html.Div(
                 html.Div(id="metrics-table", style={"margin-top": "20px"}),
             ]),
         ]),
+        html.Div( #Starting a little pessoal contacts page with the option of sending feedbacks (it is going to an email that will be given in the classroom private comentaries)
+                    className="w3-container",
+                    id="contacts",
+                    style={"margin-top": "75px"},
+                    children=[
+                        html.H1(
+                            className="w3-xlarge w3-text-blue",
+                            children=[html.B(["Contacts"])],
+                        ),
+                        html.Hr(
+                            style={
+                                "width": "50px",
+                                "border": "5px solid rgba(0, 128, 255, 0.904)",
+                            },
+                            className="w3-round",
+                        ),
+                        html.P(
+                            children=[
+                                "If you need some help or have some suggestions for new features feel free to contact us."
+                            ]
+                        ),
+                        html.Form(
+                            action="/action_page.php",
+                            target="_blank",
+                            children=[
+                                html.Div(
+                                    className="w3-section",
+                                    children=[html.Label("Name"),": Gonçalo Martins, Rafael Parente, João Santos"],
+                                                                 
+                                ),
+
+                                html.Div(
+                                    className="w3-section",
+                                    children=[html.Label("Let us know your feedback in the box below!")],
+                            
+                                ),
+                                html.Br(),
+                                html.Div([
+                                dcc.Textarea(
+                                    id='email-body',
+                                    placeholder='Compose your email here...',
+                                    style={'width': '100%', 'height': '200px'}
+                                ),
+                                html.Button(
+                                    type="button",
+                                     id='send-button',
+                                     n_clicks=0,
+                                    className="w3-button w3-block w3-padding-large w3-blue w3-margin-bottom",
+                                    children=["Send Message"],
+                                ),
+                                html.Div(id='email-status')
+                            ]),
+                                
+                                
+                            ],
+                        ),
+                    ],
+                ),
     ]
 )
 ])
@@ -621,7 +684,6 @@ def graph_bar_global(start_date,end_date, variable):
     return fig
 
 @app.callback(Output('clicked-location2', 'children'),
-        Output("co2_vs_energy_graph", "figure"),
         Output("sector_graph", "figure"),
         Input("co2-map", "clickData"),
         Input("energy-map", "clickData"),
@@ -645,10 +707,6 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
     selected_country = click_data['points'][0]['location']
     
     df=data_analysis_sing(selected_country)
-    
-    df2=df[['Total Renewable [GWh]',
-                        'Total Non-Renewable [GWh]',
-                        'Total Electricity [GWh]','Total CO2 [Tonne]']]
     
     if sector == "CO2 Emissions" :
         df= df[['Total CO2 [Tonne]',
@@ -681,18 +739,15 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
                             'Solar Radiation [W/m^2]']]
     
     print(df)
-    fig1=px.line(df2)
-    fig2=px.line(df)
     
-    fig1.update_layout(title=f'Energy Consumption and CO2 emission for {selected_country}',
-                    xaxis_title='Date',
-                    yaxis_title='Values (See variables)')
+    fig2=px.line(df)
     
     fig2.update_layout(title=f'{sector} segregation for {selected_country}',
                     xaxis_title='Date',
                     yaxis_title='Values (See variables)')
     
-    return f"You are making the data analysis to {selected_country}." , fig1, fig2
+    return f"You are making the data analysis to {selected_country}.", fig2
+
 
 @app.callback(Output('clicked-location3', 'children'),
         Output("features_bar", "figure"),
@@ -803,6 +858,38 @@ def update_forecast(selected_observable, click_data_co2, click_data_energy, clic
     fig.update_yaxes(title_text=selected_observable)
     table = generate_table(df_metrics.loc[:,selected_metrics])
     return fig, table
+
+@app.callback(
+    Output('email-status', 'children'),
+    [Input('send-button', 'n_clicks')],
+    [State('email-body', 'value')]
+)
+
+def send_email(n_clicks, email_body):
+    if n_clicks > 0:
+        try:
+            # Define your email parameters
+            sender_email = 'forecast2019tecnico@gmail.com'  # Replace with your email
+            receiver_email = 'forecast2019tecnico@gmail.com'  # Replace with recipient's email
+            subject = 'Feedback'
+            
+            # Create the email message
+            msg = MIMEText(email_body)
+            msg['Subject'] = subject
+            msg['From'] = sender_email
+            msg['To'] = receiver_email
+            
+            # Connect to the SMTP server
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()
+                server.login(sender_email, 'fjrf yzpn cknz xeiv')  # Replace with your email password
+                server.sendmail(sender_email, receiver_email, msg.as_string())
+        
+            return html.Div('Email sent successfully!')
+        
+        except Exception as e:
+            traceback.print_exc()  # Print traceback for debugging
+            return html.Div(f'Error sending email: {str(e)}')
 
 
 # Run the app
