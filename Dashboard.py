@@ -66,6 +66,10 @@ metrics = ["MAE", "MBE", "MSE", "RMSE", "NMBE", "cvRMSE"]
 
 countries = MetricForecast.countries
 
+df_population = pd.read_csv("population_data.csv")
+df_population = df_population[["Country Name","2021","2022"]]
+df_population.set_index("Country Name", inplace=True)
+
 click_data = {'points': [{'location': 'Portugal'}]}
 
 
@@ -78,6 +82,18 @@ def period_anal(start_date, end_date, variable):
                                      (df_total_country['country'] == country)]
         # Sum the values for the selected variable in the filtered DataFrame
         period_sum.append(df_filter[variable].sum())
+    return period_sum
+
+def period_anal_per_capita(start_date, end_date, variable):
+    period_sum = []
+    for country in countries:
+        # Filter the DataFrame based on the conditions: date range and country
+        df_filter = df_total_country[(df_total_country['Date'] >= start_date) & 
+                                     (df_total_country['Date'] <= end_date) & 
+                                     (df_total_country['country'] == country)]
+        #Assuming the population hasn't changed much in 2 years
+        population = (df_population.loc[country, "2021"] + df_population.loc[country, "2022"])/2
+        period_sum.append(df_filter[variable].sum()/population)
     return period_sum
         
 def data_analysis_sing(country):
@@ -213,7 +229,7 @@ app.layout = html.Div(
                         ),
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Introduction."])],
+                            children=[html.B(["Introduction"])],
                         ),
                         html.Hr(
                             style={
@@ -241,7 +257,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Interactive Map."])],
+                            children=[html.B(["Interactive Map"])],
                         ),
                         html.Hr(
                             style={
@@ -271,7 +287,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Global Data Analysis."])],
+                            children=[html.B(["Global Data Analysis"])],
                         ),
                         html.Hr(
                             style={
@@ -284,23 +300,27 @@ app.layout = html.Div(
                     ),
         html.Div([
     html.Div([
-        dcc.DatePickerRange(
-            id='my-date-picker-range',
-            min_date_allowed=date(2021, 1, 1),
-            max_date_allowed=date(2023, 1, 1),
-            initial_visible_month=date(2021, 1, 1),
-            start_date=date(2021, 1, 1),
-            end_date=date(2023, 1, 1),
-            style={"width": "350px"}
-        ),
+        html.Div([
+            dcc.DatePickerRange(
+                id='my-date-picker-range',
+                min_date_allowed=date(2021, 1, 1),
+                max_date_allowed=date(2023, 1, 1),
+                initial_visible_month=date(2021, 1, 1),
+                start_date=date(2021, 1, 1),
+                end_date=date(2023, 1, 1)
+            ),
+        ], style = {"width": "600px"}),
         html.Div(id='output-container-date-picker-range'),
         dcc.Dropdown(
             id="option-dropdown",
             options=[
                 {'label': 'Total CO2 [Tonne]', 'value': 'Total CO2 [Tonne]'},
+                {'label': 'Total CO2 per Capita [g]', 'value': 'Total CO2 per Capita [g]'},
                 {'label': 'Total Renewable [GWh]', 'value': 'Total Renewable [GWh]'},
                 {'label': 'Total Non-Renewable [GWh]', 'value': 'Total Non-Renewable [GWh]'},
-                {'label': 'Total Electricity [GWh]', 'value': 'Total Electricity [GWh]'}
+                {'label': 'Total Electricity [GWh]', 'value': 'Total Electricity [GWh]'},
+                {'label': 'Carbon Intensity of Energy Production [Tonne/GWh]', 'value': 'Carbon Intensity of Energy Production [Tonne/GWh]'},
+                {'label': 'Renewable Energy Ratio [%]', 'value': 'Renewable Energy Ratio [%]'},
             ],
             value='Total CO2 [Tonne]',
             clearable=False
@@ -320,7 +340,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Country Data Analysis."])],
+                            children=[html.B(["Country Data Analysis"])],
                         ),
                         html.Hr(
                             style={
@@ -353,7 +373,7 @@ app.layout = html.Div(
                         id="correlation_dropdown",
                         options=["CO2 Emission and Temperature", 
                                  "Energy Production and Temperature", 
-                                 "CO2 Emission and Energy Produced",
+                                 "CO2 Emission and Total Energy Produced",
                                  "Renewable Energy and Total Energy Produced"
                                  ],
                         value="CO2 Emission and Temperature",
@@ -373,7 +393,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Features."])],
+                            children=[html.B(["Features"])],
                         ),
                         html.Hr(
                             style={
@@ -427,7 +447,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Forecast and Metrics."])],
+                            children=[html.B(["Forecast and Metrics"])],
                         ),
                         html.Hr(
                             style={
@@ -693,11 +713,23 @@ def update_clicked_location(click_data_co2, click_data_energy, click_data_meteo)
     Input("option-dropdown", "value"))
 
 def graph_bar_global(start_date,end_date, variable):
-    sum_period=period_anal(start_date,end_date,variable)
+    if variable == "Total CO2 per Capita [g]":
+        sum_period1 = period_anal_per_capita(start_date,end_date,"Total CO2 [Tonne]")
+        sum_period = [a*1000000 for a in sum_period1]
+    elif variable == "Carbon Intensity of Energy Production [Tonne/GWh]":
+        sum_period1 = period_anal(start_date,end_date,"Power")
+        sum_period2 = period_anal(start_date,end_date,"Total Electricity [GWh]")
+        sum_period = [a/b for a, b in zip(sum_period1, sum_period2)]
+    elif variable == "Renewable Energy Ratio [%]":
+        sum_period1 = period_anal(start_date,end_date,"Total Renewable [GWh]")
+        sum_period2 = period_anal(start_date,end_date,"Total Electricity [GWh]")
+        sum_period = [a/b for a, b in zip(sum_period1, sum_period2)]
+    else: 
+        sum_period=period_anal(start_date,end_date,variable)
     fig=px.bar(x=countries, y=sum_period)
     fig.update_layout(title=f'{variable} for all countries in Europe',
-                    xaxis_title='Countries',
-                    yaxis_title=f'{variable}')
+                      xaxis_title='Countries',
+                      yaxis_title=f'{variable}')
     return fig
 
 @app.callback(Output('clicked-location2', 'children'),
@@ -720,7 +752,7 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
         click_data = click_data_meteo
     else:
         click_data = None
-        return f"No country selected", {}, {}
+        return "No country selected", {}, {}
     
     selected_country = click_data['points'][0]['location']
     
@@ -762,8 +794,6 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
         labels=[]
         values=[]
     
-    print(values)
-    
     fig2=px.line(df)
     
     fig3 = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='label+percent',
@@ -798,7 +828,7 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
         Input("meteo-map", "clickData"),
         Input("correlation_dropdown", "value"))
 
-def data_analysis(click_data_co2,click_data_energy,click_data_meteo,correlation):
+def data_analysis_correlation(click_data_co2,click_data_energy,click_data_meteo,correlation):
     
     global click_data
     
@@ -825,17 +855,17 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo,correlation)
     
     elif correlation == "Energy Production and Temperature":
         var1='Temperature [ºC]'
-        var2="Solar"
+        var2="Total Electricity [GWh]"
         
         var1title= 'Temperature [ºC]'
         var2title= "Total Electricity [GWh]"
         
-    elif correlation == "CO2 Emission and Energy Produced":
-        var1 = "Total Non-Renewable [GWh]"
+    elif correlation == "CO2 Emission and Total Energy Produced":
+        var1 = "Total Electricity [GWh]"
         var2 = "Power"
         
         var1title= "Fossil Fuel Energy Production [GWh]"
-        var2title= "Energy Production CO2 Emissions [GWh]"
+        var2title= "Energy Production CO2 Emissions [Tonne]"
     
     elif correlation == "Renewable Energy and Total Energy Produced":
         var1 = "Total Electricity [GWh]"
@@ -1002,8 +1032,6 @@ def send_email(n_clicks, email_body):
         except Exception as e:
             traceback.print_exc()  # Print traceback for debugging
             return html.Div(f'Error sending email: {str(e)}')
-
-    
 
 
 # Run the app
