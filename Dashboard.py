@@ -3,20 +3,13 @@ from dash import html
 from dash import dcc
 from dash.dependencies import Input, Output, State
 import pandas as pd # data science library o manipulate data
-import numpy as np # mathematical library to manipulate arrays and matrices
-import matplotlib.pyplot as plt # visualization ~
-#from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_squared_error
-from math import sqrt
-from sklearn.model_selection import train_test_split
-import statsmodels.api as sm
 import plotly.express as px
 from datetime import date
 import traceback
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import os
+import plotly.graph_objects as go
 
 import MetricForecast
 
@@ -33,6 +26,7 @@ map_tabs = [
 
 CO2_map_dropdown = [
     "Total CO2 [Tonne]",
+    "Power",
     "Ground Transport",
     "International Aviation",
     "Residential",
@@ -71,7 +65,6 @@ forecast_dropdown = [
 metrics = ["MAE", "MBE", "MSE", "RMSE", "NMBE", "cvRMSE"]
 
 countries = MetricForecast.countries
-
 
 click_data = {'points': [{'location': 'Portugal'}]}
 
@@ -154,7 +147,7 @@ app.layout = html.Div(
                         html.A(
                             href="#maps",
                             className="w3-bar-item w3-button w3-hover-white",
-                            children=["Interative Maps"],
+                            children=["Interactive Map"],
                         ),
                         html.A(
                             href="#data_analysis",
@@ -248,7 +241,7 @@ app.layout = html.Div(
                     children=[
                         html.H1(
                             className="w3-xlarge w3-text-blue",
-                            children=[html.B(["Interative Maps."])],
+                            children=[html.B(["Interactive Map."])],
                         ),
                         html.Hr(
                             style={
@@ -297,7 +290,8 @@ app.layout = html.Div(
             max_date_allowed=date(2023, 1, 1),
             initial_visible_month=date(2021, 1, 1),
             start_date=date(2021, 1, 1),
-            end_date=date(2023, 1, 1)
+            end_date=date(2023, 1, 1),
+            style={"width": "350px"}
         ),
         html.Div(id='output-container-date-picker-range'),
         dcc.Dropdown(
@@ -310,6 +304,7 @@ app.layout = html.Div(
             ],
             value='Total CO2 [Tonne]',
             clearable=False
+           
         ),
     ],),
     html.Br(),
@@ -348,9 +343,29 @@ app.layout = html.Div(
                 ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
                 html.Div([html.Div([html.P(id="clicked-location2")]),
                 dcc.Graph(id="sector_graph"),
+                dcc.Graph(id="pie-graph"),
             ]),
         ]),
         
+        html.Div([
+                html.Div([
+                    dcc.Dropdown(
+                        id="correlation_dropdown",
+                        options=["CO2 Emission and Temperature", 
+                                 "Energy Production and Temperature", 
+                                 "CO2 Emission and Energy Produced",
+                                 "Renewable Energy and Total Energy Produced"
+                                 ],
+                        value="CO2 Emission and Temperature",
+                        clearable=False,
+                        style={"width": "400px"}
+                    ),                   
+                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                html.Div([html.Div([html.P(id="clicked-location3")]),
+                dcc.Graph(id="correlation-graph"),
+            ]),
+        ]),
+    
         html.Div( #starting the part of data analysis 
                     className="w3-container",
                     id="features",
@@ -376,16 +391,15 @@ app.layout = html.Div(
                         """
                         ]
                         ),
-
-        html.Div([
+                html.Div([
                 html.Div([
                     dcc.Dropdown(
                         id="fore_dropdown",
                         options=["CO2 Emission", "Renewable Energy"],
                         value="CO2 Emission",
-                        clearable=False
-                    ),
-                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                        clearable=False,
+                    ),], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
+                
                 html.Div([
                     dcc.Dropdown(
                         id="feature_dropdown",
@@ -393,13 +407,16 @@ app.layout = html.Div(
                         value="kBest",
                         clearable=False
                     ),
-                ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
-                html.Div([html.Div([html.P(id="clicked-location3")]),
+                 ], style={"width": "200px", "display": "inline-block"}),
+                ]),
+               
+                    html.Div([html.P(id="clicked-location4")]),
+                          
+            html.Div([
                 dcc.Graph(id="features_bar"),
                 dcc.Graph(id="score_bar"),
                 html.Label("Note that this 'Final Score' is given based on each feature's performance on both tests. Those with higher scores on this graph are the chosen features to use in the forecast."),
             ]),
-        ]),
         
         
         
@@ -685,6 +702,7 @@ def graph_bar_global(start_date,end_date, variable):
 
 @app.callback(Output('clicked-location2', 'children'),
         Output("sector_graph", "figure"),
+        Output('pie-graph', 'figure'),
         Input("co2-map", "clickData"),
         Input("energy-map", "clickData"),
         Input("meteo-map", "clickData"),
@@ -715,6 +733,8 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
                         'Residential',
                         'Industry',
                         'Domestic Aviation']]
+        labels=list(df.iloc[:, 1:].columns)
+        values=list(df.iloc[:, 1:].sum())
         
     elif sector=="Energy Consumption":
         df=df[['Other sources',
@@ -728,6 +748,8 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
                         'Total Renewable [GWh]',
                         'Total Non-Renewable [GWh]',
                         'Total Electricity [GWh]']]
+        labels=list(df.iloc[:, :8].columns)
+        values=list(df.iloc[:, :8].sum())
         
     elif sector=="Climate data":
         
@@ -737,19 +759,109 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
                             'Wind Speed [km/h]',
                             'Pressure [mbar]',
                             'Solar Radiation [W/m^2]']]
+        labels=[]
+        values=[]
     
-    print(df)
+    print(values)
     
     fig2=px.line(df)
     
-    fig2.update_layout(title=f'{sector} segregation for {selected_country}',
-                    xaxis_title='Date',
-                    yaxis_title='Values (See variables)')
-    
-    return f"You are making the data analysis to {selected_country}.", fig2
+    fig3 = go.Figure(data=[go.Pie(labels=labels, values=values, textinfo='label+percent',
+                             insidetextorientation='radial'
+                            )])
 
+    
+    if sector=="CO2 Emissions":
+        fig2.update_layout(title=f'{sector} segregation for {selected_country}',
+                        xaxis_title='Date',
+                        yaxis_title='Values [Tonne]')
+        fig3.update_layout(title=f'Contribution of each factor for {sector}')
+    elif sector=="Energy Consumption":
+        fig2.update_layout(title=f'{sector} segregation for {selected_country}',
+                        xaxis_title='Date',
+                        yaxis_title='Values [GWh]')
+        fig3.update_layout(title=f'Contribution of each factor for {sector}')
+    elif sector=="Climate data":
+        fig2.update_layout(title=f'{sector} segregation for {selected_country}',
+                        xaxis_title='Date',
+                        yaxis_title='Values [Different Units]')
+        fig3={}
+        
+    fig3.show()
+    
+    return f"You are making the data analysis to {selected_country}.", fig2,fig3
 
 @app.callback(Output('clicked-location3', 'children'),
+        Output("correlation-graph", "figure"),
+        Input("co2-map", "clickData"),
+        Input("energy-map", "clickData"),
+        Input("meteo-map", "clickData"),
+        Input("correlation_dropdown", "value"))
+
+def data_analysis(click_data_co2,click_data_energy,click_data_meteo,correlation):
+    
+    global click_data
+    
+    if click_data_co2:
+        click_data = click_data_co2
+    elif click_data_energy:
+        click_data = click_data_energy
+    elif click_data_meteo:
+        click_data = click_data_meteo
+    else:
+        click_data = None
+        return f"No country selected", {}
+    
+    selected_country = click_data['points'][0]['location']
+    
+    var1, var2, var1title, var2title = "", "", "", ""
+    
+    if correlation == "CO2 Emission and Temperature":
+        var1='Temperature [ºC]'
+        var2='Total CO2 [Tonne]'
+        
+        var1title= 'Temperature [ºC]'
+        var2title= 'Total CO2 [Tonne]'
+    
+    elif correlation == "Energy Production and Temperature":
+        var1='Temperature [ºC]'
+        var2="Solar"
+        
+        var1title= 'Temperature [ºC]'
+        var2title= "Total Electricity [GWh]"
+        
+    elif correlation == "CO2 Emission and Energy Produced":
+        var1 = "Total Non-Renewable [GWh]"
+        var2 = "Power"
+        
+        var1title= "Fossil Fuel Energy Production [GWh]"
+        var2title= "Energy Production CO2 Emissions [GWh]"
+    
+    elif correlation == "Renewable Energy and Total Energy Produced":
+        var1 = "Total Electricity [GWh]"
+        var2 = "Total Renewable [GWh]"
+        
+        var1title= "Fossil Fuel Energy Production [GWh]"
+        var2title= "Energy Production CO2 Emissions [GWh]"
+        
+    
+    x,y,res = MetricForecast.relation(selected_country ,var1, var2)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode='markers', name='Data Relation'))
+    fig.add_trace(go.Scatter(x=x, y=res.intercept + res.slope*x, mode='lines', name=f'Linear Regression'))
+
+    fig.update_layout(
+        title=f'{correlation} for {selected_country}',
+        xaxis_title=var1title,
+        yaxis_title=var2title
+    )
+
+    
+    return f"You are making the data analysis to {selected_country}.", fig
+
+
+@app.callback(Output('clicked-location4', 'children'),
         Output("features_bar", "figure"),
         Output("score_bar", "figure"),
         Input("co2-map", "clickData"),
@@ -890,6 +1002,8 @@ def send_email(n_clicks, email_body):
         except Exception as e:
             traceback.print_exc()  # Print traceback for debugging
             return html.Div(f'Error sending email: {str(e)}')
+
+    
 
 
 # Run the app

@@ -39,23 +39,28 @@ carbon_eu = pd.read_csv('carbon_eu.csv')  #dados das emissoes de carbono para to
 
 energy_prod = pd.read_csv('energy_prod.csv') #dados da produção de energia para todos os paises e os tipos de energia
 
-carbon_eu=carbon_eu.dropna() 
+carbon_eu=carbon_eu.interpolate(method="linear") 
 
-energy_prod=energy_prod.dropna() 
+energy_prod=energy_prod.interpolate(method="linear") 
 
 date_range = pd.date_range(start='2021-01-01', end='2023-01-01', freq='D') #O intervalo de datas com as quais vamos trabalhar
 
 countries=["Austria",
            "Belgium",
-           #"Czechia",
+           "Croatia",
+           "Finland",
            "France",
            "Germany",
+           "Ireland",
            "Italy",
-           #"Luxembourg",
-           #"Netherlands",
+           "Luxembourg",
+           "Netherlands",
            "Poland",
            "Portugal", 
-           "Spain"] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
+           "Spain",
+           "Slovenia",
+           "Sweden",
+           'Switzerland'] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
 
 weather_cond=['Temperature [ºC]','Wind Speed [km/h]','Relative Humidity (%)','Pressure [mbar]','Solar Radiation [W/m^2]','Rain [mm/h]'] #Weather conditions que escolhemos
 
@@ -70,6 +75,8 @@ years=["2021","2022","2023"] #anos que vamos ver
 for country in countries:
     
     meteo = pd.read_csv(f'meteo_data/meteo_{country}.csv')
+    
+    meteo= meteo.interpolate(method="linear")
     
     meteo.index = date_range
     
@@ -157,7 +164,7 @@ for country in countries:
     
     df_country  = pd.merge(df_country , df_en, on=["Date","country"], how='inner')
     
-    df_country=df_country.dropna() 
+    df_country=df_country.interpolate(method="linear")
     
     df_list=[]
     
@@ -185,7 +192,7 @@ for country in countries:
     
     globals()[f"{country.replace(' ', '_')}"]= df_country
     
-    globals()[f"{country.replace(' ', '_')}"]=globals()[f"{country.replace(' ', '_')}"].dropna() 
+    globals()[f"{country.replace(' ', '_')}"]=globals()[f"{country.replace(' ', '_')}"].interpolate(method="linear")
     
     if "datetime" in globals()[f"{country.replace(' ', '_')}"].columns:
         globals()[f"{country.replace(' ', '_')}"] = globals()[f"{country.replace(' ', '_')}"].drop(columns=['datetime'])
@@ -673,3 +680,25 @@ def Forecast(country, option):
         df_metrics = calculate_metrics(y_pred_RF_uni, Y_test)
         
         return df_output, df_metrics
+    
+import scipy   
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats  
+from scipy.optimize import curve_fit
+
+def func(x, a, b):
+    return a * (x**3) + b
+
+def relation(country,variable1, variable2):
+    if not variable1 or not variable2:
+        raise ValueError("Variable names cannot be empty")
+    
+    x=globals()[f"{country.replace(' ', '_')}"][variable1]
+    y=globals()[f"{country.replace(' ', '_')}"][variable2]
+    
+    res = stats.linregress(x, y)
+    
+    
+    return x,y,res
+    
