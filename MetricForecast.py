@@ -60,7 +60,14 @@ countries=["Austria",
            "Spain",
            "Slovenia",
            "Sweden",
-           'Switzerland'] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
+           'Switzerland',
+           'Slovakia',
+           'Hungary',
+           'Greece',
+           'Denmark',
+           'Romania'] 
+#Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
+
 
 weather_cond=['Temperature [ºC]','Wind Speed [km/h]','Relative Humidity (%)','Pressure [mbar]','Solar Radiation [W/m^2]','Rain [mm/h]'] #Weather conditions que escolhemos
 
@@ -691,8 +698,6 @@ def func(x, a, b):
     return a * (x**3) + b
 
 def relation(country,variable1, variable2):
-    if not variable1 or not variable2:
-        raise ValueError("Variable names cannot be empty")
     
     x=globals()[f"{country.replace(' ', '_')}"][variable1]
     y=globals()[f"{country.replace(' ', '_')}"][variable2]
