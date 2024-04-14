@@ -26,23 +26,23 @@ map_tabs = [
 
 CO2_map_dropdown = [
     "Total CO2 [Tonne]",
-    "Power",
-    "Ground Transport",
-    "International Aviation",
-    "Residential",
-    "Industry",
-    "Domestic Aviation"
+    "Power [Tonne]",
+    "Ground Transport [Tonne]",
+    "International Aviation [Tonne]",
+    "Residential [Tonne]",
+    "Industry [Tonne]",
+    "Domestic Aviation [Tonne]"
     ]
 
 Energy_map_dropdown = [
-    "Nuclear",
-    "Gas",
-    "Oil",
-    "Coal",
-    "Wind",
-    "Solar",
-    "Hydroelectricity",
-    "Other sources",
+    "Nuclear [GWh]",
+    "Gas [GWh]",
+    "Oil [GWh]",
+    "Coal [GWh]",
+    "Wind [GWh]",
+    "Solar [GWh]",
+    "Hydroelectricity [GWh]",
+    "Other sources [GWh]",
     "Total Renewable [GWh]",
     "Total Non-Renewable [GWh]",
     "Total Electricity [GWh]"
@@ -224,7 +224,7 @@ app.layout = html.Div(
                         html.H1(
                             className="w3-xxxlarge",
                             children=[
-                                html.B(["European CO2 Emission and Energy Consumption"])
+                                html.B(["European CO2 Emission and Energy Production"])
                             ],
                         ),
                         html.H1(
@@ -241,9 +241,9 @@ app.layout = html.Div(
                         html.P(
                     children=[
                         """
-                        Welcome to the European CO2 Emission and Energy Consumption Analyzer. 
-                        This dashboard provides the user with information on the CO2 emissions and energy consumption of all European Union countries, including data for each sector and meteorological information from 01-01-2021 to 01-01-2023. 
-                        Users can also perform data analysis on a global level or for a specific country, and forecast CO2 emissions and energy consumption for individual countries between 01-01-2023 and 31-12-2023. To select a country for forecasting, simply click on the country of interest on the first map. Portugal is the default country.
+                        Welcome to the European CO2 Emission and Energy Production Analyzer. 
+                        This dashboard provides the user with information on the CO2 emissions and energy production of all European Union countries, including data for each sector and meteorological information from 01-01-2021 to 01-01-2023. 
+                        Users can also perform data analysis on a global level or for a specific country, and forecast CO2 emissions and energy production for individual countries between 01-01-2023 and 31-12-2023. To select a country for forecasting, simply click on the country of interest on the first map. Portugal is the default country.
                         """
                         ]
                         ),
@@ -356,7 +356,7 @@ app.layout = html.Div(
                 html.Div([
                     dcc.Dropdown(
                         id="sector_dropdown",
-                        options=["CO2 Emissions", "Energy Consumption", "Climate data"],
+                        options=["CO2 Emissions", "Energy Production", "Climate data"],
                         value="CO2 Emissions",
                         clearable=False
                     ),
@@ -381,8 +381,9 @@ app.layout = html.Div(
                         style={"width": "400px"}
                     ),                   
                 ], style={"width": "200px", "display": "inline-block", "margin-right": "10px"}),
-                html.Div([html.Div([html.P(id="clicked-location3")]),
+                html.Div([html.Div([html.P(id="clicked-location3")]),          
                 dcc.Graph(id="correlation-graph"),
+                html.Div([html.P(id="coef-error")]),
             ]),
         ]),
     
@@ -507,9 +508,25 @@ app.layout = html.Div(
                             children=[
                                 html.Div(
                                     className="w3-section",
-                                    children=[html.Label("Name"),": Gonçalo Martins, Rafael Parente, João Santos"],
+                                    children=[html.Label("Name"),":"],
                                                                  
                                 ),
+                                html.Div(
+                                    className="w3-section",
+                                    children=[html.Label("Gonçalo Martins (Data Collection, Interactive Map, Data Analysis, Dashboard)")],
+                            
+                                ),
+                                html.Div(
+                                    className="w3-section",
+                                    children=[html.Label("Rafael Parente (Interactive Map, Global Data Analysis, Forecast and Metrics, Dashboard)")],
+                            
+                                ),
+                                html.Div(
+                                    className="w3-section",
+                                    children=[html.Label("João Santos (Data Treatment, Data Analysis, Features, Dashboard)")],
+                            
+                                ),
+                                
 
                                 html.Div(
                                     className="w3-section",
@@ -651,6 +668,7 @@ def display_choropleth_co2(variable):
     Input('energy-map-dropdown', 'value')
 )
 
+
 def display_choropleth_energy(variable):
     fig = px.choropleth(df_total_country,
                         geojson="https://raw.githubusercontent.com/leakyMirror/map-of-europe/master/GeoJSON/europe.geojson",
@@ -717,7 +735,7 @@ def graph_bar_global(start_date,end_date, variable):
         sum_period1 = period_anal_per_capita(start_date,end_date,"Total CO2 [Tonne]")
         sum_period = [a*1000000 for a in sum_period1]
     elif variable == "Carbon Intensity of Energy Production [Tonne/GWh]":
-        sum_period1 = period_anal(start_date,end_date,"Power")
+        sum_period1 = period_anal(start_date,end_date,"Power [Tonne]")
         sum_period2 = period_anal(start_date,end_date,"Total Electricity [GWh]")
         sum_period = [a/b for a, b in zip(sum_period1, sum_period2)]
     elif variable == "Renewable Energy Ratio [%]":
@@ -756,27 +774,27 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
     
     selected_country = click_data['points'][0]['location']
     
-    df=data_analysis_sing(selected_country)
+    df_anal=data_analysis_sing(selected_country)
     
     if sector == "CO2 Emissions" :
-        df= df[['Total CO2 [Tonne]',
-                        'Ground Transport',
-                        'International Aviation',
-                        'Residential',
-                        'Industry',
-                        'Domestic Aviation']]
+        df= df_anal[['Total CO2 [Tonne]',
+                        'Ground Transport [Tonne]',
+                        'International Aviation [Tonne]',
+                        'Residential [Tonne]',
+                        'Industry [Tonne]',
+                        'Domestic Aviation [Tonne]']]
         labels=list(df.iloc[:, 1:].columns)
         values=list(df.iloc[:, 1:].sum())
         
-    elif sector=="Energy Consumption":
-        df=df[['Other sources',
-                        'Gas',
-                        'Oil',
-                        'Coal',
-                        'Wind',
-                        'Nuclear',
-                        'Solar',
-                        'Hydroelectricity',
+    elif sector=="Energy Production":
+        df=df_anal[['Other sources [GWh]',
+                        'Gas [GWh]',
+                        'Oil [GWh]',
+                        'Coal [GWh]',
+                        'Wind [GWh]',
+                        'Nuclear [GWh]',
+                        'Solar [GWh]',
+                        'Hydroelectricity [GWh]',
                         'Total Renewable [GWh]',
                         'Total Non-Renewable [GWh]',
                         'Total Electricity [GWh]']]
@@ -785,7 +803,7 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
         
     elif sector=="Climate data":
         
-        df=df[['Temperature [ºC]',
+        df=df_anal[['Temperature [ºC]',
                             'Relative Humidity (%)',
                             'Rain [mm/h]',
                             'Wind Speed [km/h]',
@@ -807,7 +825,7 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
                         yaxis_title='Values [Tonne]')
         fig3.update_layout(title=f'Contribution of each factor for {sector}')
         fig3.show()
-    elif sector=="Energy Consumption":
+    elif sector=="Energy Production":
         fig2.update_layout(title=f'{sector} segregation for {selected_country}',
                         xaxis_title='Date',
                         yaxis_title='Values [GWh]')
@@ -822,6 +840,7 @@ def data_analysis(click_data_co2,click_data_energy,click_data_meteo, sector):
 
 @app.callback(Output('clicked-location3', 'children'),
         Output("correlation-graph", "figure"),
+        Output('coef-error', 'children'),
         Input("co2-map", "clickData"),
         Input("energy-map", "clickData"),
         Input("meteo-map", "clickData"),
@@ -839,7 +858,8 @@ def data_analysis_correlation(click_data_co2,click_data_energy,click_data_meteo,
         click_data = click_data_meteo
     else:
         click_data = None
-        return f"No country selected", {}
+        return f"No country selected", {}, " There's no value for coefficient nor Chi squared."
+    
     
     selected_country = click_data['points'][0]['location']
     
@@ -861,7 +881,7 @@ def data_analysis_correlation(click_data_co2,click_data_energy,click_data_meteo,
         
     elif correlation == "CO2 Emission and Total Energy Produced":
         var1 = "Total Electricity [GWh]"
-        var2 = "Power"
+        var2 = "Power [Tonne]"
         
         var1title= "Fossil Fuel Energy Production [GWh]"
         var2title= "Energy Production CO2 Emissions [Tonne]"
@@ -887,7 +907,7 @@ def data_analysis_correlation(click_data_co2,click_data_energy,click_data_meteo,
     )
 
     
-    return f"You are making the data analysis to {selected_country}.", fig
+    return f"You are making the data analysis to {selected_country}.", fig , f"m: {round(res.slope,3)}, b: {round(res.intercept,3)}  R Squared: {round((res.rvalue)**2,3)} (y=mx+b)."
 
 
 @app.callback(Output('clicked-location4', 'children'),

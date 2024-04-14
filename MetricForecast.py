@@ -45,27 +45,8 @@ energy_prod=energy_prod.interpolate(method="linear")
 
 date_range = pd.date_range(start='2021-01-01', end='2023-01-01', freq='D') #O intervalo de datas com as quais vamos trabalhar
 
-countries=["Austria",
-           "Belgium",
-           "Croatia",
-           "Finland",
-           "France",
-           "Germany",
-           "Ireland",
-           "Italy",
-           "Luxembourg",
-           "Netherlands",
-           "Poland",
-           "Portugal", 
-           "Spain",
-           "Slovenia",
-           "Sweden",
-           'Switzerland',
-           'Slovakia',
-           'Hungary',
-           'Greece',
-           'Denmark',
-           'Romania'] 
+countries=["Czech Republic","Cyprus","United Kingdom","Portugal","Spain","France","Germany","Belgium","Italy","Netherlands","Austria","Poland", "Luxembourg","Ireland","Finland","Sweden","Croatia","Slovenia",'Switzerland','Slovakia','Hungary',
+           'Greece','Denmark','Romania','Latvia','Lithuania',"Estonia"]
 #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
 
 
@@ -203,7 +184,23 @@ for country in countries:
     
     if "datetime" in globals()[f"{country.replace(' ', '_')}"].columns:
         globals()[f"{country.replace(' ', '_')}"] = globals()[f"{country.replace(' ', '_')}"].drop(columns=['datetime'])
-        
+    
+    globals()[f"{country.replace(' ', '_')}"].rename(columns={
+    "Power": "Power [Tonne]",
+    "Ground Transport": "Ground Transport [Tonne]" ,
+    "International Aviation": "International Aviation [Tonne]",
+    "Residential": "Residential [Tonne]",
+    "Industry": "Industry [Tonne]",
+    "Domestic Aviation" : "Domestic Aviation [Tonne]",
+    "Nuclear":  "Nuclear [GWh]",
+    "Gas" : "Gas [GWh]" ,
+    "Oil" : "Oil [GWh]",
+    "Coal": "Coal [GWh]",
+    "Wind" : "Wind [GWh]",
+    "Solar" : "Solar [GWh]",
+    "Hydroelectricity" : "Hydroelectricity [GWh]",
+    "Other sources" : "Other sources [GWh]"
+}, inplace=True)
 def get_country_variable(country):
     return globals()[f"{country.replace(' ', '_')}"]   
 
@@ -479,7 +476,7 @@ def Regression(country, option, scaler):
                   'max_leaf_nodes': None}
 
     RF_model_uni= RandomForestRegressor(**parameters)
-    RF_model_uni.fit(X_train_scaled, Y_train.reshape(-1,1))
+    RF_model_uni.fit(X_train_scaled, Y_train.reshape(-1))
     
     return RF_model_uni
 
@@ -615,6 +612,23 @@ def TestData(country):
     df_test["3 Last Ren Energy Mean"] = df_test['Total Renewable [GWh]'].rolling(window=4).apply(lambda x: x[-4:-1].mean(), raw=True) #mean of the last three consumption values for each index
     
     df_test=df_test.dropna() 
+    
+    df_test.rename(columns={
+    "Power": "Power [Tonne]",
+    "Ground Transport": "Ground Transport [Tonne]" ,
+    "International Aviation": "International Aviation [Tonne]",
+    "Residential": "Residential [Tonne]",
+    "Industry": "Industry [Tonne]",
+    "Domestic Aviation" : "Domestic Aviation [Tonne]",
+    "Nuclear":  "Nuclear [GWh]",
+    "Gas" : "Gas [GWh]" ,
+    "Oil" : "Oil [GWh]",
+    "Coal": "Coal [GWh]",
+    "Wind" : "Wind [GWh]",
+    "Solar" : "Solar [GWh]",
+    "Hydroelectricity" : "Hydroelectricity [GWh]",
+    "Other sources" : "Other sources [GWh]"
+}, inplace=True)
     
     return df_test
 

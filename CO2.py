@@ -97,8 +97,8 @@ energy_prod=energy_prod.interpolate(method="linear")
 
 date_range = pd.date_range(start='2021-01-01', end='2023-01-01', freq='D') #O intervalo de datas com as quais vamos trabalhar
 
-countries=["Portugal","Spain","France","Germany","Belgium","Italy","Netherlands","Austria","Poland", "Luxembourg","Ireland","Finland","Sweden","Croatia","Slovenia",'Switzerland','Slovakia','Hungary',
-           'Greece','Denmark','Romania','Latvia','Lithuania'] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
+countries=["Czech Republic","Cyprus","United Kingdom","Portugal","Spain","France","Germany","Belgium","Italy","Netherlands","Austria","Poland", "Luxembourg","Ireland","Finland","Sweden","Croatia","Slovenia",'Switzerland','Slovakia','Hungary',
+           'Greece','Denmark','Romania','Latvia','Lithuania',"Estonia"] #Colocar mais paises à medida que conseguimos descarregar (é importante meter o resto é automático)
 
 weather_cond=['Temperature [ºC]','Wind Speed [km/h]','Relative Humidity (%)','Pressure [mbar]','Solar Radiation [W/m^2]','Rain [mm/h]'] #Weather conditions que escolhemos
 
@@ -111,7 +111,7 @@ years=["2021","2022","2023"] #anos que vamos ver
 ############################## Tratamento dos dados em loop para os vários paises e a junção de todos os ficheiros excel ##########################
 
 for country in countries:
-    
+
     meteo = pd.read_csv(f'meteo_data/meteo_{country}.csv')
     
     meteo= meteo.interpolate(method="linear")
@@ -125,13 +125,12 @@ for country in countries:
                                 'sealevelpressure': 'Pressure [mbar]','solarradiation': 'Solar Radiation [W/m^2]', 'precip': 'Rain [mm/h]'}, inplace=True)
 
     country_name = country
-    
-    if country == "Czechia":
-        country_name = "Czech Republic"
         
     df_country = carbon_eu[(carbon_eu['country'] == country_name)] 
     
+    
     for sector in sectors_co2:
+        print(sector)
         sector_list = df_country[(df_country['sector'] == sector)]
         sector_list = sector_list.drop(columns=['timestamp','sector'])
         sector_list.rename(columns={'value': f'{sector}', 'date': 'Date'}, inplace=True)
@@ -187,6 +186,8 @@ for country in countries:
     
     df_en  = pd.merge(df_en ,Hydroelectricity, on=["Date","country"], how='inner')
     
+    print(country)
+    
     df_en["Total Renewable [GWh]"]= df_en["Wind"]+ df_en["Solar"] + df_en["Hydroelectricity"]
 
     df_en["Total Non-Renewable [GWh]"]= df_en["Other sources"]+df_en["Gas"]+df_en["Oil"]+df_en["Coal"]+ df_en["Nuclear"]
@@ -194,6 +195,7 @@ for country in countries:
     df_en["Total Electricity [GWh]"]= df_en["Other sources"]+df_en["Gas"]+df_en["Oil"]+df_en["Coal"]+df_en["Wind"]+ df_en["Nuclear"] + df_en["Solar"] + df_en["Hydroelectricity"]
     
     df_en[['Day','Month','Year']] = df_en.Date.str.split("/",expand=True) 
+    
 
     df_en = df_en.drop(columns=['Date'])
 
@@ -254,5 +256,22 @@ for country in countries[1:]:
     df_total_country=pd.concat([df_total_country,df_total_a_country])
     df_total_country.dropna(inplace=True)  
     
+
+df_total_country.rename(columns={
+    "Power": "Power [Tonne]",
+    "Ground Transport": "Ground Transport [Tonne]" ,
+    "International Aviation": "International Aviation [Tonne]",
+    "Residential": "Residential [Tonne]",
+    "Industry": "Industry [Tonne]",
+    "Domestic Aviation" : "Domestic Aviation [Tonne]",
+    "Nuclear":  "Nuclear [GWh]",
+    "Gas" : "Gas [GWh]" ,
+    "Oil" : "Oil [GWh]",
+    "Coal": "Coal [GWh]",
+    "Wind" : "Wind [GWh]",
+    "Solar" : "Solar [Gwh]",
+    "Hydroelectricity" : "Hydroelectricity [GWh]",
+    "Other sources" : "Other sources [GWh]"
+})
 df_total_country.to_csv(f"csv_files/Allcountries.csv")
     
